@@ -47,8 +47,11 @@ def my_testing(Y, mu_cat, mu_grass, Sigma_cat, Sigma_grass, K_cat, K_grass, M, N
 
             z_vector = z_vector.reshape((64,1) )
 
+            #seed through nueral nework
+            networkResult = feedforward(network, z_vector)
+
             #if ( f(cat|z) > f(grass|z), then set output(i,j) = 1
-            if(Gcat(mu_cat, Sigma_cat, z_vector, Acat, Bcat, Ccat) >
+            if(Gcat(mu_cat, Sigma_cat, z_vector, Acat, Bcat, Ccat)  >
             Ggrass(mu_grass, Sigma_grass, z_vector, Agrass, Bgrass, Cgrass )):
 
                 output[i,j] = 1
@@ -60,7 +63,15 @@ def my_testing(Y, mu_cat, mu_grass, Sigma_cat, Sigma_grass, K_cat, K_grass, M, N
 
     return output
 
-def my_testing_new(Y, network):
+def my_testing_new(Y, mu_cat, mu_grass, Sigma_cat, Sigma_grass, K_cat, K_grass, M, N, network):
+
+    #calculate constants
+    Acat = np.log( (f_cat(K_cat, K_grass) ) )
+    Agrass = np.log( f_grass(K_cat, K_grass) )
+    Bcat = (1/2) * np.log( np.linalg.det(Sigma_cat) )
+    Bgrass = (1/2) * np.log( np.linalg.det(Sigma_grass) )
+    Ccat = np.linalg.pinv(Sigma_cat)
+    Cgrass = np.linalg.pinv(Sigma_grass)
 
     #create a MxN matrix of zeros to be used as the output
     output = np.zeros( (M, N))
@@ -81,9 +92,15 @@ def my_testing_new(Y, network):
             #seed through nueral nework
             networkResult = feedforward(network, z_vector)
 
-            if (networkResult[0] > 0.37) | (networkResult[1] < 0.1):
+            #if ( f(cat|z) > f(grass|z), then set output(i,j) = 1
+            if(Gcat(mu_cat, Sigma_cat, z_vector, Acat, Bcat, Ccat) * networkResult[0] >
+            Ggrass(mu_grass, Sigma_grass, z_vector, Agrass, Bgrass, Cgrass )) * networkResult[1]:
+
                 output[i,j] = 1
+
             else:
+
+                #else set output(i,j) = 0
                 output[i,j] = 0
 
     return output
@@ -123,16 +140,12 @@ Y = ( plt.imread('cat_grass.jpg') / 255)
 
 
 #create a network
-network = Network([64,30,30, 2])
+network = Network([64,100,2])
 
-#orgainize the training data into a list of tuples (64x1,2x1)
-training_data = createTrainingData(train_cat, train_grass)
+network.biases = np.load('NetworkBiases.npy')
+network.weights = np.load('NetworkWeights.npy')
 
-#teach network
-SGD(network, training_data, 100,10 , 2.0)
-
-output2 = my_testing_new(Y, network)
-output3 = my_testing_new(output2, network)
+output2 = my_testing_new(Y, mu_cat, mu_grass, Sigma_cat, Sigma_grass, K_cat, K_grass, M, N, network)
 
 # 2. process image
 start_time = time.time()
@@ -144,10 +157,8 @@ print('My runtime is %s seconds' % (time.time() - start_time))
 Xstar = plt.imread('truth.png')
 mae = MAE(output, Xstar)
 mae2 = MAE(output2, Xstar)
-mae3 = MAE(output3, Xstar)
 print("mae: ", mae*100, "%")
 print("mae: ", mae2*100, "%")
-print("mae: ", mae3*100, "%")
 
 # plot processed image
 plt.imshow(output2 * 255, cmap='gray')
@@ -156,7 +167,7 @@ plt.imshow(output * 255, cmap='gray')
 plt.show()
 plt.imsave('cat_gauss.png', output, cmap='gray')
 plt.imsave('network.png', output2, cmap='gray')
-plt.imsave('network2.png', output3, cmap='gray')
+
 
 
 
