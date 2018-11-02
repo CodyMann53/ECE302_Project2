@@ -63,15 +63,7 @@ def my_testing(Y, mu_cat, mu_grass, Sigma_cat, Sigma_grass, K_cat, K_grass, M, N
 
     return output
 
-def my_testing_new(Y, mu_cat, mu_grass, Sigma_cat, Sigma_grass, K_cat, K_grass, M, N, network):
-
-    #calculate constants
-    Acat = np.log( (f_cat(K_cat, K_grass) ) )
-    Agrass = np.log( f_grass(K_cat, K_grass) )
-    Bcat = (1/2) * np.log( np.linalg.det(Sigma_cat) )
-    Bgrass = (1/2) * np.log( np.linalg.det(Sigma_grass) )
-    Ccat = np.linalg.pinv(Sigma_cat)
-    Cgrass = np.linalg.pinv(Sigma_grass)
+def my_testing_new(Y, network):
 
     #create a MxN matrix of zeros to be used as the output
     output = np.zeros( (M, N))
@@ -93,8 +85,7 @@ def my_testing_new(Y, mu_cat, mu_grass, Sigma_cat, Sigma_grass, K_cat, K_grass, 
             networkResult = feedforward(network, z_vector)
 
             #if ( f(cat|z) > f(grass|z), then set output(i,j) = 1
-            if(Gcat(mu_cat, Sigma_cat, z_vector, Acat, Bcat, Ccat) * networkResult[0] >
-            Ggrass(mu_grass, Sigma_grass, z_vector, Agrass, Bgrass, Cgrass )) * networkResult[1]:
+            if(networkResult[0] > networkResult[1]):
 
                 output[i,j] = 1
 
@@ -140,12 +131,12 @@ Y = ( plt.imread('cat_grass.jpg') / 255)
 
 
 #create a network
-network = Network([64,100,2])
+network = Network([64,30,2])
 
 network.biases = np.load('NetworkBiases.npy')
 network.weights = np.load('NetworkWeights.npy')
 
-output2 = my_testing_new(Y, mu_cat, mu_grass, Sigma_cat, Sigma_grass, K_cat, K_grass, M, N, network)
+output2 = my_testing_new(Y, network)
 
 # 2. process image
 start_time = time.time()
